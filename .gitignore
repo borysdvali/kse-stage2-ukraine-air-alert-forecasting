@@ -1,0 +1,37 @@
+# Local environments and Python caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Credentials and machine-local settings
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*credentials*.json
+*secrets*.json
+.aws/
+.ssh/
+
+# Source snapshots, derived data, trained models and generated results
+data/
+models/
+outputs/
+reports/
+
+# Editor and operating-system files
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
