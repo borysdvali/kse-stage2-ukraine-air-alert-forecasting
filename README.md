@@ -6,6 +6,53 @@ and alert-duration-at-onset estimates. This is a retrospective research prototyp
 The model currently forecasts *any* alert in a reconstructed clear region; it
 does not provide validated missile- or UAV-specific probabilities.
 
+## Results at a glance
+
+| Forecast | Evaluation window | Scored cases | Model | Simple baseline | Error measure |
+|---|---|---:|---:|---:|---|
+| Alert starts in next hour | Sep 2026 | 12,699 clear region-hours | 0.15543 | 0.16707 | Brier score |
+| Alert starts in next hour | Oct 1–10, 2026 | 3,787 clear region-hours | 0.16818 | 0.18018 | Brier score |
+| Total duration at alert onset | Oct 1–10, 2026 | 1,323 eligible completed episodes | 18.8 min | 19.5 min | Mean absolute error |
+
+Lower is better in every row. Onset uses calibrated logistic regression versus
+a calibrated region/hour frequency baseline. Duration uses quantile boosting
+versus a training-period regional median. September had already been inspected;
+October is a retrospective archive replay, not a pristine unseen holdout.
+Duration scoring excludes open and uncertain episodes. These results do not
+establish operational reliability or missile/UAV-specific prediction.
+The detailed figures are generated locally in `reports/learning_v2/metrics.json`
+and `reports/october_2026_review/metrics.json` by the commands below.
+
+## Workflow at a glance
+
+```mermaid
+flowchart LR
+    A["Official-derived or volunteer archive; source-specific"] --> B["Replay events timestamped no later than T"]
+    B --> C["Calendar, region, recent-alert and current-activity features"]
+    C --> D["Logistic onset model and cross-region challengers"]
+    D --> E["Next-hour alert probability for clear regions"]
+    E --> F["Chronological evaluation: Brier, calibration, coverage"]
+    B --> G["Eligible episodes with observed endings"]
+    G --> H["Features from just before alert onset"]
+    H --> I["Quantile boosting duration models"]
+    I --> J["Total-duration estimate and interval at onset"]
+    J --> K["Evaluation: duration error and interval coverage"]
+```
+
+Telegram posts support candidate threat annotations and descriptive analysis;
+they are **not** inputs to these forecast models. For the onset comparisons,
+the outcome window must finish before any fitting cutoff:
+
+```mermaid
+flowchart LR
+    subgraph SEP["September comparison"]
+        S1["Fit: Jan 2024–Jul 2026"] --> S2["Calibrate: Aug 2026"] --> S3["Evaluate: Sep 2026"]
+    end
+    subgraph OCT["October retrospective"]
+        O1["Fit: Jan 2024–Aug 2026"] --> O2["Calibrate: Sep 2026"] --> O3["Evaluate: Oct 1–10, 2026"]
+    end
+```
+
 ## Installation and quick start
 
 Use Python 3.12 and the pinned dependencies:
