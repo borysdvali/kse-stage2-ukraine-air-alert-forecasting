@@ -1,4 +1,5 @@
 import csv
+import shutil
 import sys
 import tempfile
 import unittest
@@ -73,6 +74,34 @@ class CausalityTests(unittest.TestCase):
                 self.assertEqual(len(events), 1)
                 self.assertEqual(events[0][1], 0)
 
+    def test_fixture_archive_prefix_invariance(self):
+        fixture = Path(__file__).resolve().parent / "fixtures" / "synthetic_alerts.csv"
+        with fixture.open(newline="") as handle:
+            rows = list(csv.DictReader(handle))
+        self.assertEqual(len(rows), 240)
+        self.assertEqual(len({row["oblast"] for row in rows}), 8)
+        self.assertTrue(all(row["started_at"].startswith("2030-") for row in rows))
+        self.assertTrue(any(not row["finished_at"] for row in rows))
+        self.assertTrue(any(row["naive"] == "True" for row in rows))
+
+        at = m.epoch("2030-01-25T12:00:00Z")
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            raw = root / "data" / "raw"
+            raw.mkdir(parents=True)
+            for source in ("official", "volunteer"):
+                shutil.copyfile(fixture, raw / f"{source}_data_en.csv")
+                with patch.object(m, "ROOT", root):
+                    complete, _ = m.load_events(source, at + 86400)
+                    prefix, _ = m.load_events(source, at)
+                grid = np.array([at])
+                pd.testing.assert_frame_equal(m.feature_frame(complete, grid), m.feature_frame(prefix, grid))
+
+    @unittest.skipUnless(
+        all((m.ROOT / "data" / "raw" / f"{source}_data_en.csv").exists()
+            for source in ("official", "volunteer")),
+        "Full historical archives are not installed",
+    )
     def test_real_archive_prefix_invariance(self):
         at = m.epoch("2026-07-01T12:00:00Z")
         for source in ("official", "volunteer"):

@@ -6,6 +6,14 @@ and alert-duration-at-onset estimates. This is a retrospective research prototyp
 The model currently forecasts *any* alert in a reconstructed clear region; it
 does not provide validated missile- or UAV-specific probabilities.
 
+## Key engineering lesson
+
+> During review, I found that an early duration-model implementation selected
+> historical episodes using their start time but did not require the episode
+> to have ended before the fitting cutoff. This allowed future duration
+> information into some training labels. I corrected the split to require
+> `end_epoch < fit_cutoff` and added regression tests to prevent recurrence.
+
 ## Results at a glance
 
 | Forecast | Evaluation window | Scored cases | Model | Simple baseline | Error measure |
@@ -64,9 +72,45 @@ python3.12 -m venv .venv
 
 The repository intentionally omits raw archives, derived datasets, saved models,
 and generated reports. Obtain the source snapshots described below before running
-the data preparation, full test suite, or training commands. To reproduce the exact historical
+data preparation or training. To reproduce the exact historical
 numbers, the same source snapshot versions are needed; upstream files and edited
 Telegram posts can change after collection.
+
+For a download-free smoke test, `tests/fixtures/synthetic_alerts.csv` contains
+240 wholly synthetic example rows dated in 2030, including open and estimated
+ends. Run `.venv/bin/python -m unittest discover -s tests -v` without the large
+raw CSV or Telegram archives; the full-archive integration check is skipped
+when those files are absent. The fixture is for tests only, not model training
+or evaluation.
+
+### Local historical forecast dashboard
+
+The optional Streamlit dashboard presents a single region's next-hour onset
+probability, a regional comparison table, a color-coded map and review details.
+It uses the **existing saved baseline models and prediction command**; it does
+not change training or make a live forecast. Install the extra UI dependency
+after the core requirements, and download the pinned map boundaries once:
+
+```bash
+.venv/bin/python -m pip install -r requirements-ui.txt
+.venv/bin/python scripts/prepare_dashboard_map.py
+.venv/bin/python -m streamlit run dashboard.py --server.address 127.0.0.1
+```
+
+Open the local address printed by Streamlit. The dashboard requires the raw
+archive snapshots in `data/raw/` and locally generated baseline models in
+`models/learning_baseline/`; both are intentionally excluded from Git. Select
+an archive and a historical UTC hour within its coverage. The prediction
+command checks the saved model's fit cutoff, validity interval, hourly cadence,
+full forecast horizon and source-snapshot hash. If any check fails, the display
+shows an error instead of a probability. `data/geo/` is also ignored; its
+administrative map is a 2017 [geoBoundaries gbOpen UKR ADM1](https://www.geoboundaries.org/api/current/gbOpen/UKR/ADM1/)
+snapshot under ODbL 1.0, **not** a current front-line map.
+
+The display clearly separates numeric forecasts from abstentions for active or
+unresolved regions. It cannot provide validated missile/UAV-specific odds or
+predict when an active alert will end. Only load saved models you generated or
+trust locally: joblib model files can execute code when loaded.
 
 ## Data sources and preparation
 
